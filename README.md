@@ -1,4 +1,4 @@
-# Technical Analyst Agent – Asset Management Trade Note
+# Coca-Cola (KO) Technical Analyst Agent – Asset Management Trade Note
 
 ## Project Summary
 
