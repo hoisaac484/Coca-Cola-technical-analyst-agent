@@ -12,7 +12,7 @@ def download_price_data(
     start: str,
     end: str,
     interval: str = "1d",
-    auto_adjust: bool = True,
+    auto_adjust: bool = False,
 ) -> pd.DataFrame:
     raw = yf.download(
         ticker,
@@ -39,7 +39,7 @@ def normalize_ohlc(df: pd.DataFrame) -> pd.DataFrame:
         df = df.xs(t0, axis=1, level=1, drop_level=True)
 
     df.columns = [str(c).title() for c in df.columns]
-    needed = ["Open", "High", "Low", "Close", "Volume"]
+    needed = ["Open", "High", "Low", "Close", "Adj Close", "Volume"]
     missing = [c for c in needed if c not in df.columns]
     if missing:
         raise ValueError(f"Missing columns {missing}. Got: {list(df.columns)}")

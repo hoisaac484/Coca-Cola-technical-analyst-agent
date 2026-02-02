@@ -44,17 +44,19 @@ def plot_all_in_one_window(result: Dict[str, Any]) -> None:
     if len(idx) < 5:
         raise ValueError("Not enough data to plot.")
 
-    price = df.loc[idx, "Close"].astype(float)
+    price_close = df.loc[idx, "Close"].astype(float)
+    price_adj = df.loc[idx, "Adj Close"].astype(float)
 
     # Normalize (so initial capital doesn't flatten things)
-    price_norm = price / price.iloc[0]
+    price_close_norm = price_close / price_close.iloc[0]
+    price_adj_norm = price_adj / price_adj.iloc[0]
     equity_norm = equity / equity.iloc[0]
 
-    # Buy&Hold equity (normalized)
-    bh_equity = (price / price.iloc[0]).rename("buy_hold_equity")
+    bh_close = price_close_norm.rename("Buy & Hold (Close)")
+    bh_adj = price_adj_norm.rename("Buy & Hold (Adj Close)")
 
     # Drawdowns
-    dd_bh = compute_drawdown(bh_equity)
+    dd_bh = compute_drawdown(bh_adj)
     dd_strat = compute_drawdown(equity_norm.rename("strategy_equity"))
 
     # Leverage + open trades
@@ -74,7 +76,8 @@ def plot_all_in_one_window(result: Dict[str, Any]) -> None:
 
     # 1) Price vs Equity (normalized)
     ax = axes[0]
-    ax.plot(price_norm, label="Buy & Hold (norm)")
+    ax.plot(bh_close, label="Buy & Hold (Close)")
+    ax.plot(bh_adj, label="Buy & Hold (Adj Close)")
     ax.plot(equity_norm, label="Strategy Equity (norm)")
     ax.set_title("Strategy vs Buy & Hold (Normalized)")
     ax.set_ylabel("Normalized value")
