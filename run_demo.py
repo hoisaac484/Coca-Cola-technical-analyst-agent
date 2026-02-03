@@ -4,10 +4,12 @@ from __future__ import annotations
 import math
 from typing import Any, Dict
 import matplotlib.pyplot as plt
+from pathlib import Path
+from docx import Document
 
 from src.data_strategy import download_price_data, normalize_ohlc
 from src.backtest import run_backtest_virtual_capital, compute_drawdown
-from src.llm_tradenote import generate_trade_note_azure, save_trade_note_to_word
+from src.llm_tradenote import generate_trade_note_azure
 
 def print_metrics(m: Dict[str, Any]) -> None:
     def pct(x: float) -> str:
@@ -37,7 +39,7 @@ def print_metrics(m: Dict[str, Any]) -> None:
     print(f"{'MaxDrawdown':>28}: {pct(m['MaxDrawdown'])}")
 
 
-def plot_all_in_one_window(result: Dict[str, Any]) -> None:
+def plot_all_in_one_window(result: Dict[str, Any], output_dir: str) -> None:
     df = normalize_ohlc(result["df"])
     equity = result["equity"].dropna()
     idx = equity.index
@@ -115,11 +117,18 @@ def plot_all_in_one_window(result: Dict[str, Any]) -> None:
     ax.set_xlabel("Date")
     ax.grid(True)
     ax.legend(loc="upper left")
-
-    plt.tight_layout()
-    plt.show()
+    
+    plt.savefig(
+        output_dir / "backtest_plots.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
 
 def main() -> None:
+    root = Path(__file__).parent
+    out_dir = root / "output"
+    out_dir.mkdir(exist_ok=True)
+    
     # =========================
     # Hard-coded parameters
     # =========================
@@ -135,9 +144,6 @@ def main() -> None:
     slippage_bps = 0.0
     dist_threshold_pct = 0.5
     candle_height_limit_pct = 2.0
-
-    # Optional: if you want to hardcode costs too (otherwise defaults inside backtest)
-    # commission_rate = 0.00001  # 0.001% per side (buy once + sell once)
 
     # =========================
     # Run pipeline
@@ -157,24 +163,36 @@ def main() -> None:
         slippage_bps=slippage_bps,
         dist_threshold_pct=dist_threshold_pct,
         candle_height_limit_pct=candle_height_limit_pct,
-        # commission_rate=commission_rate,
     )
 
-    # 1) Metrics
-    print_metrics(result["metrics"])
+    # 1) Metrics    
+    path = out_dir / "metrics.txt"
+
+    with open(path, "w") as f:
+        f.write("=== Metrics (Virtual Capital) ===\n")
+        for k, v in result["metrics"].items():
+            if isinstance(v, float):
+                f.write(f"{k:>28}: {v:.4f}\n")
+            else:
+                f.write(f"{k:>28}: {v}\n")
 
     # # 2) Plots
-    plot_all_in_one_window(result)
+    plot_all_in_one_window(result, out_dir)
 
     # 3) Trade note
     note = generate_trade_note_azure(result, ticker=ticker)
 
-    path = save_trade_note_to_word(
-        note,
-        filename=f"{ticker}_trade_note.docx",
-    )
+    path = out_dir / f"{ticker}_trade_note.docx"
 
-    print("\n=== TRADE NOTE SAVED ===")
+    doc = Document()
+    doc.add_heading("Trade Note", level=1)
+
+    for block in note.split("\n\n"):
+        doc.add_paragraph(block)
+
+    doc.save(path)
+
+    print("\n=== OUPUTS SAVED ===")
     print(f"Location: {path}")
 
 
